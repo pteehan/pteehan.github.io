@@ -4,7 +4,7 @@ title: About
 permalink: /about/
 ---
 
-I'm a professional data scientist with a software engineering and research background.  I have several years experience using R to analyze data and build data products.  This website hosts my personal projects.  
+I'm a professional data scientist with a software engineering and research background.  I have several years' experience using R to analyze data and build data products.  This website hosts my personal projects.  
 
 ### Technical details
 
