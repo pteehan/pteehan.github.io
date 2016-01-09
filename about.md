@@ -4,12 +4,8 @@ title: About
 permalink: /about/
 ---
 
-Some information about you!
-
-### More Information
-
-A place to include any other types of information that you'd like to include about yourself.
+I'm a professional data scientist with a strong software engineering background.  I have several years experience using R to analyze data and build data products.  This website hosts my personal projects.  
 
 ### Contact me
 
-[email@domain.com](mailto:email@domain.com)
+[paul.teehan@gmail.com](mailto:paul.teehan@gmail.com)
