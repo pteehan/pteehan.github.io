@@ -36,9 +36,9 @@ In the next graphs I've split the season into two halves, and I'm plotting the d
 
 ![plot of chunk unnamed-chunk-5]({{ site.url }}/images/runs-scored-and-allowed-unnamed-chunk-5-1.png)
 
-Take a look at Toronto in the first half.  Earlier we saw that their average runs scored was much higher than their average runs allowed.  But using only the average masks the actual behavior, which is trimodal: sometimes they scored two or three runs, sometimes six or seven, and often ten or more.  At the same time they were allowing three to five runs in most games.  This means that every time time they scored less than three runs, which happened fairly often, they were likely to lose.   Kansas City, on the other hand, usually allowed only two or three runs in the first half, and were likely to win most of those games.  In the second half, Toronto pushed its runs allowed curve over to the left, and also decreased the number of games where they scored less than two runs, which would have translated into many more wins.  
+Take a look at Toronto in the first half.  Earlier we saw that their average runs scored was much higher than their average runs allowed.  But using only the average masks the actual behavior, which is trimodal: sometimes they scored two or three runs, sometimes six or seven, and often ten or more.  At the same time they were allowing three to five runs in most games.  This means that every time time they scored less than three runs, which happened fairly often, they were likely to lose.   Kansas City, on the other hand, usually allowed only two or three runs in the first half, and were likely to win most of those games.  In the second half, Toronto pushed its runs allowed curve over to the left, and also increased the number of games where they scored more than two runs, which would have translated into many more wins.  
 
-Let's look at the same data, but this time plotted as a head-to-head comparision of both teams:
+Let's look at the same data, but this time plotted as a head-to-head comparison of both teams:
 
 ![plot of chunk unnamed-chunk-6]({{ site.url }}/images/runs-scored-and-allowed-unnamed-chunk-6-1.png)
 
