@@ -5,50 +5,50 @@ library(RColorBrewer)
 library(ggplot2)
 library(gridExtra)
 library(plyr)
+library(memoise)
+library(retrosheet)
 
-
-gameZipFilename <- function(year) paste0("~/blog/data/mlb/gl", year, ".zip")
-gameFilename <- function(year) paste0("~/blog/data/mlb/GL", year, ".TXT")
-
-downloadFile <- function(year) {
-  # see R packages 'retrosheet' and 'sabremetrics' 
-  download.file(paste0("http://www.retrosheet.org/gamelogs/gl",year,".zip"), gameZipFilename(year))
-  unzip(gameZipFilename(year), exdir="~/blog/data/mlb/")
-}
+dataFolder <- "../data/"
 
 # get the listing of games for a current year
-getGames <- function(year=2015) {
-  if(!file.exists(gameFilename(year))) downloadFile(year)
-  games <- data.table(read.csv(gameFilename(year), header = FALSE))
-  # game key from here: http://www.retrosheet.org/gamelogs/glfields.txt (partial)
-  games_key <- c("date", "game_number", "day_of_week", "visiting_team", "visiting_league", "visiting_team_game_number", 
-                 "home_team", "home_league", "home_team_game_number", 
-                 "visiting_score", "home_score", "game_length_outs")
-  colnames(games)[1:length(games_key)] <- games_key
-  games[, date := ymd(date)]
-  games
+getGamesFromWeb <- function(year=2015) {
+  g<-data.table(getRetrosheet("game", year))
+  g[, Date := ymd(Date)]
+  g
+}
+getGames <- function(years=2015) {
+  data.table(ldply(years, function(year) {
+  filename <- paste0(dataFolder, "games", year, ".RDS")
+  if(file.exists(filename))
+    readRDS(filename)
+  else
+    saveRDS(getGamesFromWeb(year), filename)
+  }))
 }
 # let's condense this so it's just scores
 
 getTeamScores <- function(games) {
-  scores <- games[, c("date", "visiting_team", "home_team", "visiting_score", "home_score"), with=FALSE]
+  scores <- games[, c("Date", "VisTm", "HmTm", "VisRuns", "HmRuns", "NumOuts"), with=FALSE]
   # I want each team to get its own table
-  team_scores1 <- scores[, list(date=date, team=home_team, score=home_score, opponent=visiting_team, opponent_score=visiting_score)]
-  team_scores2 <- scores[, list(date=date, team=visiting_team, score=visiting_score, opponent=home_team, opponent_score=home_score)]
+  team_scores1 <- scores[, list(date=Date, team=HmTm, runs_scored=HmRuns, opponent=VisTm, runs_allowed=VisRuns, length_innings=NumOuts/6)]
+  team_scores2 <- scores[, list(date=Date, team=VisTm, runs_scored=VisRuns, opponent=HmTm, runs_allowed=HmRuns, length_innings=NumOuts/6)]
+  
   team_scores <- rbind(team_scores1, team_scores2)
   team_scores <- team_scores[order(date)]
   team_scores[, game_number:=1:nrow(.SD),by=team]
-  team_scores[, win := score> opponent_score]
+  team_scores[, win := runs_scored> runs_allowed]
   team_scores[, win_pos_neg := as.numeric(win)*2 -1]
+  team_scores[, runs_scored_per_inning := runs_scored/length_innings]
+  team_scores[, runs_allowed_per_inning := runs_allowed/length_innings]
   #team_scores <- team_scores[order(date)]
   team_scores[, win500 := cumsum(win_pos_neg), by=team]
   
-  team_scores_daily <- team_scores[, list(win500=last(win500)), by=c("date", "team", "game_number")]
+  team_scores_daily <- team_scores[, list(win500=last(win500)), by=c("date", "team", "game_number", "runs_scored", "runs_allowed", "length_innings")]
   team_scores_daily[, win500plus := win500]
   team_scores_daily[, win500minus := win500]
   team_scores_daily[win500plus<0, win500plus:=NA]
   team_scores_daily[win500minus>0, win500minus:=NA]
-  leagues <- unique(games[, list(team=home_team, league=home_league)])
+  leagues <- unique(games[, list(team=HmTm, league=HmTmLg)])
   team_scores_daily <- merge(team_scores_daily, leagues, by="team")
 }
 
@@ -71,15 +71,24 @@ plotTeamScores <- function(team_scores_daily) {
 
 plotTeamScoresYear <- function(year) {
   plotTeamScores(getTeamScores(getGames(year)))
-  
 }
 
-getTeamScoresByYear <- function(team, years) {
-  thisteam=team
+
+getGamesByYear <- function(years) {
+  data.table(ldply(years, function(year) {
+    scores<-getGames(year)
+    scores[, year := year]
+    scores
+  }))  
+}
+
+getTeamScoresByYear <- function(years, teams=NULL) {
   data.table(ldply(years, function(year) {
     scores<-getTeamScores(getGames(year))
     scores[, year := year]
-    scores[team==thisteam]
+    if(!is.null(teams))
+      scores<-scores[team %in% teams]
+    scores
   }))
 }
 
