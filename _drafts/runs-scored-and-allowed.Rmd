@@ -12,7 +12,20 @@ knitr::opts_chunk$set(fig.path='{{ site.url }}/images/runs-scored-and-allowed-')
 ```
 
 
-I'm still thinking about the 2015 Toronto Blue Jays and how they went from mediocre to unstoppable following a few key trades.  This is the holy grail of team management, that every owner and mananger in the game reaches for: improving the quality of the team.  Why did those trades make such a big difference?  Why did other trades have less of an effect?  To answer this question, we need to understand more about what we mean by quality.  And it turns out this is quite a rabbit hole. 
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=3, dpi=400}
+source('../code/baseball/seasons.R')
+wins<-getTeamScoresByYear(2015, c("TOR", "KCA", "MIA"))
+runs <- melt(wins, id.vars=c("team", "game_number"), measure.vars=c("runs_scored", "runs_allowed"), value.name="runs")
+runs <- runs[team %in% c("KCA", "TOR")]
+runs[, game_group:=ceiling(game_number / (162/2))]
+runs[, game_group := factor(game_group, labels=c("First half", "Second half"))]
+ggplot(runs, aes(x=runs, fill=variable)) + geom_density(adjust=0.5,alpha=0.5) + facet_grid(game_group~team) + theme_bw()
+```
+By looking at the distribution of runs scored and runs allowed, we can visuallly estimate the quality of a team and its liklihood of winning.  
+
+--- 
+
+I'm still thinking about the 2015 Toronto Blue Jays and how they went from mediocre to unstoppable following a few key trades.  This is the holy grail of team management, that every owner and manager in the game reaches for: improving the quality of the team.  Why did those trades make such a big difference?  Why did other trades have less of an effect?  To answer this question, we need to understand more about what we mean by quality.  And it turns out this is quite a rabbit hole. 
 
 The trivial definition is that a high quality team is one that wins a lot, or, has a higher winning percentage.  This doesn't yield us very much insight, because we can only assess quality after the fact -- we can't know if a trade will improve the quality of a team until we see how many games they start winning.  But it is a good starting point from which to look at the data.  
 
@@ -60,7 +73,7 @@ runs[, game_group := factor(game_group, labels=c("First half", "Second half"))]
 ggplot(runs, aes(x=runs, fill=variable)) + geom_density(adjust=0.5,alpha=0.5) + facet_grid(game_group~team) + theme_bw()
 ```
 
-Take a look at Toronto in the first half.  Earlier we saw that their average runs scored was much higher than their average runs allowed.  But using only the average masks the actual behavior, which is trimodal: sometimes they scored two or three runs, sometimes six or seven, and often ten or more.  At the same time they were allowing three to five runs in most games.  This means that every time time they scored less than three runs, which happened fairly often, they were like to lose.   Kansas City, on the other hand, usually allowed only two or three runs in the first half, and were likely to win most of those games.  In the second half, Toronto pushed its runs allowed curve over to the left, and also decreased the number of games where they scored less than two runs, which would have translated into many more wins.  
+Take a look at Toronto in the first half.  Earlier we saw that their average runs scored was much higher than their average runs allowed.  But using only the average masks the actual behavior, which is trimodal: sometimes they scored two or three runs, sometimes six or seven, and often ten or more.  At the same time they were allowing three to five runs in most games.  This means that every time time they scored less than three runs, which happened fairly often, they were likely to lose.   Kansas City, on the other hand, usually allowed only two or three runs in the first half, and were likely to win most of those games.  In the second half, Toronto pushed its runs allowed curve over to the left, and also decreased the number of games where they scored less than two runs, which would have translated into many more wins.  
 
 Let's look at the same data, but this time plotted as a head-to-head comparision of both teams:
 
