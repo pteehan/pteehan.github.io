@@ -5,11 +5,10 @@ date: "January 9, 2016"
 layout: post
 
 ---
+![plot of chunk unnamed-chunk-4]({{ site.url }}/images/first-pitch-unnamed-chunk-4-1.png)
+Starting off a series of posts about baseball with some visualizations of win-loss data.
 
-
-
-
-
+---
 
 Today I'm starting a new series of posts in which I visualize and analyze data from my lifelong favourite sport, Major League Baseball.  Baseball is a data scientist's dream.  Unlike real-time games like hockey or basketball, baseball occurs one play at a time, making it possible to precisely record everything that happens in a game in a condensed scoring notation, which provides a wealth of well-structured data.  (Chess is another good example of such a game.)
 
