@@ -1,0 +1,192 @@
+---
+title: "Simulating seasons from run data"
+author: "Paul Teehan"
+date: "January 23, 2016"
+layout: post
+
+---
+
+```{r, echo=FALSE}
+knitr::opts_chunk$set(fig.path='{{ site.url }}/images/simulating-seasons-from-run-data-')
+#knitr::opts_chunk$set(out.width='800px', dpi=300)
+```
+
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.width=9, fig.height=2, dpi=300}
+source("../code/baseball/seasons.R")
+wins<-getTeamScoresByYear(2015, teams=c("CIN", "OAK", "KCA", "CHA", "TEX", "NYN", "TOR"))
+
+simulateWinPct <- function(scored, allowed, n=100) {
+  laply(1:n, function(z) {   
+     scored_sample <- scored[sample(1:length(scored),size=300,replace=TRUE)] 
+     scored_allowed <- allowed[sample(1:length(allowed),size=300,replace=TRUE)] 
+     i <- scored_sample!=scored_allowed
+     scored_sample <- scored_sample[i][1:162]
+     scored_allowed <- scored_allowed[i][1:162]
+     sum(scored_sample > scored_allowed)/162
+  })
+}
+
+win_pct <- wins[, list(win_pct_2015=sum(runs_scored>runs_allowed)/length(runs_scored)), by=team]
+wins_sim <- wins[, list(simulated_win_pct=simulateWinPct(runs_scored, runs_allowed,n=10000)), by=team]
+win_mean <- wins_sim[, list(sim_mean=mean(simulated_win_pct)), by=team]
+
+ggplot(wins_sim, aes(x=simulated_win_pct, fill=team)) + geom_density() + facet_wrap(~team, nrow=1) + theme_bw() + 
+  geom_vline(data=win_pct, aes(xintercept=win_pct_2015)) + geom_vline(xintercept=0.5, linetype="longdash") +
+  scale_fill_brewer(palette="Set2",guide="none")
+
+ # geom_vline(data=win_mean, aes(xintercept=sim_mean))
+```
+By simulating seasons from existing data we see that Toronto was the best team in baseball in 2015.  This approach appears to outperform existing methods for win expectation.
+
+In the [previous post](http://pltn.ca/runs-scored-and-allowed/) I plotted runs scored and runs allowed as distributions, and suggested that we could infer something about a team's likelihood of winning from these distributions. I'm going to develop that approach in this post, and compare against some other established methods for inferring likelihood of winning. 
+
+The key assumption is that runs scored and runs allowed are both random quantities that are governed by some kind of underlying statistical distributions, and that if we understand these distributions, we understand some fundamental truths about the team.  I can state that more formally by defining *R* to be a random variable donating the number of runs scored per game for a team, and *A* a random variable denoting the number of runs allowed per game for a team.  Each random variable is governed by a statistical distribution.
+
+We don't actually know what these distributions are, but we do know what happened in the 2015 season.  Here's what it looked like for Cincinatti and for Toronto:
+
+``` {r, echo=FALSE, warning=FALSE, message=FALSE, fig.width=9, fig.height=5, dpi=300}
+source("../code/baseball/seasons.R")
+wins<-getTeamScoresByYear(2015, c("CIN", "TOR"))
+setnames(wins, "runs_scored", "R: runs scored")
+setnames(wins, "runs_allowed", "A: runs allowed")
+runs <- melt(wins, id.vars=c("team", "game_number"), measure.vars=c("R: runs scored", "A: runs allowed"), value.name="runs")
+ggplot(runs, aes(x=runs, fill=variable)) + geom_histogram(binwidth=1) + facet_wrap(team~variable, nrow=1) + theme_bw() + scale_fill_discrete(guide=FALSE) + ggtitle("2015 runs scored and allowed: histograms")
+```
+
+Those 162 games are like 162 samples from the underlying distributions of *R* and *A*.  If we squint we can imagine a smooth curve, or perhaps serveral overlayed curves, which is the key fundamental truth we are after: the "true" behavior underneath the randomness.  I am leaving the exploration of candidate mathmetical models for a future post.  
+
+There is a critical question to be answered before we go any further: are these two variables, *R* and *A*, independent, or is there some correlation?  To answer this, we can plot runs scored and allowed against one another.  If they are correlated, we should see a diagonal shape, and if not, we should see a big splat:
+
+
+``` {r, echo=FALSE, warning=FALSE, message=FALSE, fig.width=9, fig.height=6, dpi=300}
+source('../code/baseball/seasons.R')
+wins<-getTeamScoresByYear(2015)
+runs <- melt(wins, id.vars=c("team", "game_number"), measure.vars=c("runs_scored", "runs_allowed"), value.name="runs")
+runs_wide <- dcast(runs, formula=team+game_number~variable)
+mean_cor <- mean(runs_wide[, cor(runs_scored, runs_allowed), by=team]$V1)
+ggplot(runs_wide, aes(x=runs_scored, y=runs_allowed, color=team)) + facet_wrap(~team, ncol=8) + geom_point(alpha=0.5) + scale_color_discrete(guide="none") + theme_bw() + coord_equal()
+```
+
+It looks pretty splattish to me, and, the mean correlation coefficient across all 2015 teams is `r mean_cor`.  This is very close to zero, so we can conclude that runs scored and runs allowed are not correlated, i.e. that they are independent processes.  In other words, the amount of runs a team scores in one game has no influence on the amount of runs they allow.  This is nice, because it makes the calculations easier.   One way to interpret this result is that runs allowed depends mostly on the opponents; the team's defense may shift the average tendancy up or down, but the result on any given day depends on how well their opponents are hitting.  
+
+I'm going to develop my own metric, as followed.  First, we'll assume *R* and *A* are random variables that have the exact distributions as the record of the 2015 season -- in other words, we take what actually happened as a real measure of the team's offense and defense  -- but unlike the 2015 season in which specific values of *R* and *A* are paired together, we let these two variables float indepedently.  We take 162 samples of these variables to simulate a regular season and figure out the final winning percentage.  The result of this will be an alternate-universe version of what might have happened in the 2015 season had the dice landed differently.  We do this many times and eventually we see a range of outcomes.  The average winning percentage across all of these universes will be our new metric.
+
+It's straightforward to do such a simulation -- we just build an empirical distribution from the 2015 data, sample it, and mark a win if *R* is greater than *A*.  One caveat: ties are not allowed in baseball, so if we land on a tie, we'll throw it away and try again.  Let's simulate 10,000 seasons from the 2015 data.  I'll mark a winning percentage of 0.5 with a dashed line, and the actual 2015 performance with a solid line.
+
+``` {r, echo=FALSE, warning=FALSE, message=FALSE, fig.width=9, fig.height=7, dpi=300}
+wins<-getTeamScoresByYear(2015)
+
+simulateWinPct <- function(scored, allowed, n=100) {
+  laply(1:n, function(z) {   
+     scored_sample <- scored[sample(1:length(scored),size=300,replace=TRUE)] 
+     scored_allowed <- allowed[sample(1:length(allowed),size=300,replace=TRUE)] 
+     i <- scored_sample!=scored_allowed
+     scored_sample <- scored_sample[i][1:162]
+     scored_allowed <- scored_allowed[i][1:162]
+     sum(scored_sample > scored_allowed)/162
+  })
+}
+
+win_pct <- wins[, list(win_pct_2015=sum(runs_scored>runs_allowed)/length(runs_scored)), by=team]
+wins_sim <- wins[, list(simulated_win_pct=simulateWinPct(runs_scored, runs_allowed,n=10000)), by=team]
+win_mean <- wins_sim[, list(sim_mean=mean(simulated_win_pct)), by=team]
+
+ggplot(wins_sim, aes(x=simulated_win_pct, fill=team)) + geom_density(alpha=0.5) + facet_wrap(~team) + theme_bw() + 
+  geom_vline(data=win_pct, aes(xintercept=win_pct_2015)) + geom_vline(xintercept=0.5, linetype="longdash") +
+  scale_fill_discrete(guide="none")
+
+ # geom_vline(data=win_mean, aes(xintercept=sim_mean))
+```
+
+Very interesting!  The distributions all look identical, differing only in mean.  We can see whether a team was lucky or unlucky by looking at where their actual performance (solid line) falls in relation to the peak of the distribution.  Some teams performed near the expected average (BAL, ATL, PHI, SEA), some teams were unlucky and lost more games than they should have (TOR, MIL, COL) and some were lucky and won more than they should have (PIT, TEX, CHN).  Of course there are many factors that we haven't accounted for, notably that the distributions change throughout the year as the teams add and remove players, as I discussed in an earlier post.  I think home-field advantage is another factor we could pull out and improve the fidelity of our model.  Plus, we've not corrected for games that were not 9 innings long.  Still, this is pretty illuminating.  And it gives us some strong evidence that Toronto was the best team in baseball in 2015: 
+
+``` {r, echo=FALSE, warning=FALSE, message=FALSE, fig.width=9, fig.height=4, dpi=300}
+win_best <- win_mean[order(sim_mean)]
+win_best[, wins := 162*sim_mean - 81]
+win_best[, team:=factor(team, ordered = TRUE, levels=team)]
+myPalette <- colorRampPalette(rev(brewer.pal(11, "BrBG")))
+#sc <- scale_colour_gradientn(colours = myPalette(100), limits=c(1, 8))
+
+ggplot(win_best, aes(x=factor(team),y=wins, fill=wins)) + geom_bar(stat="identity") + theme_bw() + scale_fill_gradientn(colours = myPalette(100), guide="none") + ylab("2015: win expectation (games above .500") + ggtitle("Win expectation in 2015") + xlab("")
+```
+
+We can also see that Toronto was very unlucky in 2015, losing 8 more games than they would have won in an average season.  Oakland was the only team that was unluckier.
+
+``` {r, echo=FALSE, warning=FALSE, message=FALSE, fig.width=9, fig.height=4, dpi=300}
+wins_delta <- merge(win_pct, win_mean, by="team")
+wins_delta[, gap := 162*(win_pct_2015-sim_mean)]
+wins_delta <- wins_delta[order(wins_delta$gap)]
+wins_delta[, team:=factor(team, ordered = TRUE, levels=team)]
+ggplot(wins_delta, aes(x=factor(team),y=gap, fill=gap)) + geom_bar(stat="identity") + theme_bw() + scale_fill_gradientn(colours = myPalette(100), guide="none") + ylab("2015: wins below/above expectation") + 
+  ggtitle("2015 gap between expectation and actual performance") + xlab("")
+
+```
+
+In a way I've re-invented the wheel here.  There are already formulas for win expectation. The main formula in use is known as Pythagorean Expectation, after it's resemblence to the Pythagorean theorem: 
+
+![Pythagorean Expectation](https://upload.wikimedia.org/math/b/0/d/b0da4b28fff6eb1edcdc59da5cff7934.png)
+
+The gist is, you tally up total runs scored and total runs allowed throughout the season and use the above formula to estimate win percentage.  There are several variations in which the exponent differs; it's 2 above, 1.83 in another formulation, and in some cases it depends on runs scored and allowed again.  The [Wikipedia page](https://en.wikipedia.org/wiki/Pythagorean_expectation) has more, including some discussion on the meaning and theoretical justifications.  
+
+I believe that my new method -- taking the mean of a large number of simulated seasons -- should be more accurate, because it uses more information than the Pythagorean expectation models.  We can test this by examining the error, ie. the difference between win expectation and actual performance, according to the various methods.  A good estimator should have zero average error (i.e. no systematic bias) and should have  root-mean-square error as small as possible.  I'm going to compare the simulated season approach with the basic Pythagorean Expectation formula with exponent 2, the same formula with exponent 1.83, and the "Pythagenpat" formula with an exponent that varies by team according to their runs scored and allowed.  
+
+``` {r, echo=FALSE}
+
+mean_sim <- function(runs_scored, runs_allowed, n=100) {
+  mean(simulateWinPct(runs_scored, runs_allowed))
+}
+pythagorean <- function(runs_scored, runs_allowed, alpha=2) {
+    1/(1+(sum(runs_allowed)/sum(runs_scored))^alpha)
+}
+
+wins<-getTeamScoresByYear(2015)
+win_exp <- wins[,
+                list(actual_win_pct=sum(runs_scored>runs_allowed)/length(runs_scored), 
+            mean_sim = mean_sim(runs_scored, runs_allowed, n=100000),
+            pythagorean_2 = pythagorean(runs_scored, runs_allowed),
+            pythagorean_1.83 = pythagorean(runs_scored, runs_allowed, alpha=1.83), 
+            pythagenpat = pythagorean(runs_scored, runs_allowed, alpha=((sum(runs_scored)+sum(runs_allowed))/(length(runs_scored)))^0.287
+                                      )), by=team]
+
+win_exp[, sim_error := mean_sim-actual_win_pct]
+win_exp[, py2_error := pythagorean_2-actual_win_pct]
+win_exp[, py183_error := pythagorean_1.83-actual_win_pct]
+win_exp[, pypat_error := pythagenpat-actual_win_pct]
+# 
+mean_errors <- win_exp[, list(sim=mean(sim_error), 
+                              py2=mean(py2_error), 
+                              py183=mean(py183_error), 
+                              pypat=mean(pypat_error))]
+rms_errors <- win_exp[, list(sim=sqrt(mean(sim_error^2)), 
+                                  py2=sqrt(mean(py2_error^2)),
+                                  py183=sqrt(mean(py183_error^2)),
+                             pypat=sqrt(mean(pypat_error^2))
+                             )]
+# 
+
+```
+
+The mean errors are all close to zero, so each estimator is unbiased: 
+````{r kable, echo=FALSE, results="asis"}
+library(xtable)
+
+print(paste(laply(names(mean_errors), 
+      function(n) 
+        paste0(n, ": ", sprintf("%.05f", mean_errors[[n]]))
+), collapse=";     "))
+```
+
+And the root-mean-square error for the simulated season approach is significantly less than all three Pythagorean expectation approaches:   
+
+````{r kable2, echo=FALSE, results="asis"}
+print(paste(laply(names(rms_errors), 
+      function(n) 
+        paste0(n, ": ", sprintf("%.05f", rms_errors[[n]]))
+), collapse=";     "))
+```
+
+
+The Pythagorean expectation method flattens the season's runs scored and allowed behavior into two single numbers -- total runs scored and allowed over the course of the season.  It drops all the information about the volatility or consistency of a team's offense or defense, and in fact it's remarkably accurate given how condensed it is.  When we use the entire distributions, we're better able to model the impact of random chance on a team's win-loss record, and this results in a reduction in prediction error.  And, I think we get something useful out of this approach: it's nice to be able to visually see the distributions and look at where a team could have landed in any particular season.
+
+The simulated season approach is cumbersome and computationally expensive.  However, if we can replace the empirical distributions of runs scored and allowed with mathematical approximations, then there may the the possibility for a clean formulation, which could be very useful. I'll be exploring this in the next posts.
