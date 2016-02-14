@@ -20,7 +20,7 @@ We don't actually know what these distributions are, but we do know what happene
 
 ![plot of chunk unnamed-chunk-3]({{ site.url }}/images/simulating-seasons-from-run-data-unnamed-chunk-3-1.png)
 
-Those 162 games are like 162 samples from the underlying distributions of *R* and *A*.  If we squint we can imagine a smooth curve, or perhaps serveral overlayed curves, which is the key fundamental truth we are after: the "true" behavior underneath the randomness.  I am leaving the exploration of candidate mathmetical models for a future post.  
+Those 162 games are like 162 samples from the underlying distributions of *R* and *A*.  If we squint we can imagine a smooth curve, or perhaps serveral overlayed curves, which is the key fundamental truth we are after: the "true" behavior underneath the randomness.  I am leaving the exploration of candidate mathematical models for a future post.  
 
 There is a critical question to be answered before we go any further: are these two variables, *R* and *A*, independent, or is there some correlation?  To answer this, we can plot runs scored and allowed against one another.  If they are correlated, we should see a diagonal shape, and if not, we should see a big splat:
 
@@ -43,24 +43,24 @@ We can also see that Toronto was very unlucky in 2015, losing 8 more games than 
 
 ![plot of chunk unnamed-chunk-7]({{ site.url }}/images/simulating-seasons-from-run-data-unnamed-chunk-7-1.png)
 
-In a way I've re-invented the wheel here.  There are already formulas for win expectation. The main formula in use is known as Pythagorean Expectation, after it's resemblence to the Pythagorean theorem: 
+In a way I've re-invented the wheel here.  There are already formulas for win expectation. The main formula in use is known as Pythagorean Expectation, after its resemblence to the Pythagorean theorem: 
 
 ![Pythagorean Expectation](https://upload.wikimedia.org/math/b/0/d/b0da4b28fff6eb1edcdc59da5cff7934.png)
 
 The gist is, you tally up total runs scored and total runs allowed throughout the season and use the above formula to estimate win percentage.  There are several variations in which the exponent differs; it's 2 above, 1.83 in another formulation, and in some cases it depends on runs scored and allowed again.  The [Wikipedia page](https://en.wikipedia.org/wiki/Pythagorean_expectation) has more, including some discussion on the meaning and theoretical justifications.  
 
-I believe that my new method -- taking the mean of a large number of simulated seasons -- should be more accurate, because it uses more information than the Pythagorean expectation models.  We can test this by examining the error, ie. the difference between win expectation and actual performance, according to the various methods.  A good estimator should have zero average error (i.e. no systematic bias) and should have  root-mean-square error as small as possible.  I'm going to compare the simulated season approach with the basic Pythagorean Expectation formula with exponent 2, the same formula with exponent 1.83, and the "Pythagenpat" formula with an exponent that varies by team according to their runs scored and allowed.  
+I believe that my new method -- taking the mean of a large number of simulated seasons -- should be more accurate, because it uses more information than the Pythagorean expectation models.  We can test this by examining the error, i.e. the difference between win expectation and actual performance, according to the various methods.  A good estimator should have zero average error (i.e. no systematic bias) and should have  root-mean-square error as small as possible.  I'm going to compare the simulated season approach with the basic Pythagorean Expectation formula with exponent 2, the same formula with exponent 1.83, and the "Pythagenpat" formula with an exponent that varies by team according to their runs scored and allowed.  
 
 
 
 The mean errors are all close to zero, so each estimator is unbiased: 
-[1] "sim: -0.00039;     py2: 0.00105;     py183: 0.00095;     pypat: 0.00068"
+[1] "sim: -0.00011;     py2: 0.00105;     py183: 0.00095;     pypat: 0.00068"
 
 And the root-mean-square error for the simulated season approach is significantly less than all three Pythagorean expectation approaches:   
 
-[1] "sim: 0.02582;     py2: 0.02947;     py183: 0.02822;     pypat: 0.02873"
+[1] "sim: 0.02671;     py2: 0.02947;     py183: 0.02822;     pypat: 0.02873"
 
 
 The Pythagorean expectation method flattens the season's runs scored and allowed behavior into two single numbers -- total runs scored and allowed over the course of the season.  It drops all the information about the volatility or consistency of a team's offense or defense, and in fact it's remarkably accurate given how condensed it is.  When we use the entire distributions, we're better able to model the impact of random chance on a team's win-loss record, and this results in a reduction in prediction error.  And, I think we get something useful out of this approach: it's nice to be able to visually see the distributions and look at where a team could have landed in any particular season.
 
-The simulated season approach is cumbersome and computationally expensive.  However, if we can replace the empirical distributions of runs scored and allowed with mathematical approximations, then there may the the possibility for a clean formulation, which could be very useful. I'll be exploring this in the next posts.
+The simulated season approach is cumbersome and computationally expensive.  However, if we can replace the empirical distributions of runs scored and allowed with mathematical approximations, then there may be the possibility for a clean formulation, which could be very useful. I'll be exploring this in the next posts.
