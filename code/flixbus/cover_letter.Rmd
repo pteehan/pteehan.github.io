@@ -1,0 +1,34 @@
+---
+title: "Cover letter"
+author: "Paul Teehan"
+date: "March 24, 2016"
+output: html_document
+---
+
+To the hiring manager, 
+
+I am writing to apply for the Data Scientist role at Flixbus.  I've been working as a data scientist at a commercial software company for nearly three years now and am looking for a new role in which I can take on a lot of responsibility, work on a diverse range of products, and have a large impact on the business.  I am interested in Flixbus because I expect to find some very interesting technical challenges in both optimizing the service network and in improving sales and customer satisfaction.  In addition, I appreciate the company's mission of providing low-cost transportation.  
+
+I have enclosed a brief skills demo.  The map below shows all of Flixbus's current bus stops, marked in green, which I scraped from the Flixbus website.  In purple, I have identified thirty cities that could be could candidates for future service.  These cities are the largest by population of those cities that are within 50km and 300km of an existing Flixbus bus stop (crow-fly distance).  The table of candidate cities follows.  Acording to this analysis, there could be large opportunities for Flixbus in the UK and in Poland.  
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.width=8, fig.height=8, dpi=600}
+source("get_bus_stops.R")
+makeMap()
+````
+Fig1: Flixbus stops (green) and candidates for expansion (purple)
+
+Naturally this is a very simple analysis so the following caveats apply.  I have used crow-fly distance as a proxy for both expansion cost and operating cost, and population as a proxy for potential demand.  Operating cost would be determined by travel time (not crow-fly distance), fuel costs, taxes, and maybe other factors; expansion cost I would guess largely depends on the country and its regulatory climate; and demand is quite complex and relates to where the people are and where they want to go, as well as the competitive landscape - how well are they already served by existing options.  All of these could be modelled more explicity using known data from Flixbus operations, and we could assess the existing service to calibrate models of operating costs and demand.  
+
+The source code is online at http://pltn.ca/code/flixbus/ if you would like to see how I did this.  I look forward to hearing back.  
+
+Best regards
+
+Paul Teehan
+
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.width=4, fig.height=4, dpi=300}
+source("get_bus_stops.R")
+library(knitr)
+kable(scoreCities(30)[, list(city, country, population, distance_to_flixbus_km)])
+````
+
