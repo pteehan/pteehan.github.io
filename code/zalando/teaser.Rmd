@@ -1,0 +1,29 @@
+---
+title: "Zalando Teaser"
+author: "Paul Teehan"
+date: "March 28, 2016"
+output: word_document
+---
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.width=6, fig.height=6, dpi=100}
+source('teaser.R')
+points <- getPoints(0.001)
+plotContours(points)
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.width=6, fig.height=2, dpi=72}
+map <- getBigBerlinMap()
+plotLayer(map, "spree_prob", points)
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.width=6, fig.height=2, dpi=72}
+plotLayer(map, "gate_prob", points)
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.width=6, fig.height=2, dpi=72}
+plotLayer(map, "sat_prob", points)
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.width=6, fig.height=2, dpi=72}
+plotLayer(map, "prob_overall", points)
+```
