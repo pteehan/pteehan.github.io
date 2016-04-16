@@ -1,0 +1,163 @@
+---
+title: "Flixbus Homework: NYC taxi tips"
+author: "Paul Teehan"
+date: "April 16, 2016"
+output: pdf_document
+---
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+source('flixbus_helpers.R')
+library(data.table)
+# uncomment the one you want to choose dataset size
+#points <- getFile(subset=TRUE, n=1e5) # quick
+#points <- getFile(subset=TRUE, n=1e6) # slower
+points <- getFile(subset=FALSE) # all data - takes a while - mainly due to loading into memory and joining with spatial data
+
+min_bin_size=50 # 10 for set = 1e5, 30 for 1e6, 50 for the whole thing
+points <- prepData(points)
+
+```
+
+
+We are asked to answer the following question when considering taxi trip data from NYC: *Are there some areas in NYC, traveling from which people pay more tips?*
+
+To clean the data, I removed trips with lat/lng well outside NYC, and trips with fare amounts less than $1 since these do not appear to represent physical trips, and I've filtered out outlier tips that are more than 100% of the fare -- though it could be interesting to explore these in a future analysis. 
+
+I obtained a shapefile of NYC neighborhood tabulation areas (NTAs), available here: http://catalog.opendata.city/dataset/nyc-neighborhood-tabulation-areas-polygon .  Each trip is binned into an NTA region, of which there are 195.  When binning, I counted only bins that had at least `r min_bin_size` trips, and discarded the rest, to reduce the likelihood of random extreme results. Let's examine the mean tip percentage across the entire dataset, for all regions that had at least ten trips:
+
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, results="hide", dpi=100}
+shapes <- getShapes()
+points <- joinPointsToShapes(shapes, points) # this will take a while on big datasets
+tips <- points[, list(mean_tip_pct=mean(tip_pct, na.rm=TRUE), 
+                      median_tip_pct=median(tip_pct, na.rm=TRUE), 
+                      borough=BoroName[1], n_bin=nrow(.SD)), by=NTAName]
+tips <- tips[n_bin>min_bin_size]
+tips <- na.omit(tips)
+a<-sp::merge(shapes, tips, by="NTAName")
+spplot(a, zcol="mean_tip_pct")
+```
+
+Here are the ten regions with the highest mean tip:
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+tips[order(-mean_tip_pct), c("NTAName", "borough", "mean_tip_pct"), with=FALSE][1:10]
+```
+
+And here are the ten regions with the lowest mean tip:
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+tips[order(mean_tip_pct), c("NTAName", "borough", "mean_tip_pct"), with=FALSE][1:10]
+```
+
+Already it is possible to answer in the affirmative.  Mean tip percentage seems to be higher in the city center - central Manhattan and western Brooklyn.  Tip percentage appears to be lower in the outer edges of the city and indeed there are a number of regions with a median tip of zero.  To understand this a bit more, we can dive into the tip data.
+
+# Segementing tipping behavior
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+pointsS <- getFile(subset=TRUE,n=10000)
+pointsS <- prepData(pointsS)
+pointsS <- pointsS[total_amount<=100]
+pointsS <- pointsS[tip_pct<=0.4]
+pointsS <- pointsS[tip_amount<=25]
+
+```
+
+Using a sample of 10K rides, the tip data is plotted below, with absolute tip in dollars on the left, and tip as a percentage of total fare (including taxes and fees) on the right.  For clarity, we'll zoom into
+trips with a total amount less than $100 and with tips less than $25 and less than 40% of the total. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, dpi=100}
+library(reshape2)
+library(ggplot2)
+points_m <- melt(pointsS, id.vars = "total_amount", measure.vars = c("tip_amount", "tip_pct"))
+ggplot(points_m, aes(x=total_amount, y=value, color=factor(variable))) + geom_point(alpha=0.1) + facet_wrap(~variable, scales="free_y") + theme_bw()
+```
+
+It seems there are two coincident distributions in play.  Tips of constant amounts are common, though the amount is roughly linear with total fare.  But there is a large segment of customers that pays a predetermined percentage, likely due to the way the payment system is set up.  You can see the three options appearing as linear patterns on the left axes, and as constant amounts on the right axes, at  20%, 25%, and 30%, though there seems to be some rounding error at low amounts.  Indeed, an independent analysis of the same data mentions that these three values are offered as presets when paying by card in New York City.  http://www.bloomberg.com/news/articles/2014-07-31/heres-how-much-you-should-be-tipping-your-cab-driver
+
+I propose three segments of tippers.  The first is those who tip nothing.  The second is those who tip 20%, 25%, or 30% as a 'preset card' customer. The third is everyone else.  Let's examine the differences between the groups, with tip percentage plotted against total fare:
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, dpi=100}
+pointsS[, group:="others"]
+pointsS[, tip_pct := round(tip_pct, 2)]
+pointsS[tip_pct %in% c(0.20, 0.25, 0.30), group:="card_preset"]
+pointsS[tip_amount==0, group:="zero_tip"]
+ggplot(pointsS, aes(x=total_amount, y=tip_pct, color=group)) + geom_point(alpha=0.5) + theme_bw() + facet_wrap(~group)
+```
+
+The key observation here is that people who tip using a card preset tend to tip much higher than others; most cash tips are less than the preset card amounts.   Here is the mean tip percentage for each group, as well as the prevalence of that group in the population:
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+pointsS[, list(mean_tip_pct=mean(tip_pct), prevalence=nrow(.SD)/nrow(points)), by=group]
+```
+
+This suggests the following conclusions.  First, a large percentage of trips have zero tip, independent of fare amount.  Second, a large percentage of trips pay with a card present amount which constrains the tip to be 20%, 25%, or 30% of total fare.  Third, of the remaining trips, tips are roughly linear with fare amount and are considerably lower than the card preset amount.  
+
+Now that we have identified these segments, let's see how they fall on the map.
+
+# Mapping tipping behavior
+
+Filtering out regions that had less than ten trips overall, here is the percentage of trips from each region that had a zero tip:
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, results="hide", dpi=100}
+points <- addGroup(points)
+segments <- points[, list(zero_pct=sum(zero_tip, na.rm=TRUE)/nrow(.SD), preset_pct=sum(card_preset, na.rm=TRUE)/nrow(.SD), n_bin=nrow(.SD), 
+                          borough=BoroName[1]), by=NTAName]
+segments <- segments[n_bin>min_bin_size]
+segments <- na.omit(segments)
+a<-sp::merge(shapes, segments, by="NTAName")
+spplot(a, zcol="zero_pct")
+```
+
+The baseline population prevalence of zero-tips is `r sum(points$zero_tip)/nrow(points)`.  We see that zero-tips are uncommon in the city centre -- below the baseline prevalence, and highly dominant in some of the outskirts.  This is highly suggestive of a link between income and tipping behavior; the city outskirts are lower-income areas.
+
+Here is the percentage of trips from each region that had used a card preset of 20%, 25%, or 30%:
+```{r, echo=FALSE, warning=FALSE, message=FALSE, results="hide", dpi=100}
+spplot(a, zcol="preset_pct")
+```
+
+The baseline prevalence of card presets `r sum(points$card_preset)/nrow(points)`.  Here the trend is reversed; in the outskirts, paying by card preset is very uncommon, while it is very common in most of the city centre.  
+
+Here are the ten regions with the highest likelihood of paying by card preset, and thus delivering a high tip:
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+segments[order(-preset_pct), c("NTAName", "borough", "preset_pct"), with=FALSE][1:10]
+```
+
+And here are the ten regions with the highest likelihood of delivering a zero tip:
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+segments[order(-zero_pct), c("NTAName", "borough", "zero_pct"), with=FALSE][1:10]
+```
+
+Finally, let's remove both categories and examine only those people who tipped an amount that is not zero and is not one of the card presets.  This will be similar to the first graph in the report.  This time, we'll calculate the median tip in order to mitigate the effect of outliers.  
+```{r, echo=FALSE, warning=FALSE, message=FALSE, results="hide", dpi=100}
+pointsOther <- points[zero_tip==FALSE & card_preset==FALSE]
+pointsOther[, tip_pct := tip_amount/(total_amount-tip_amount)] # this was rounded earlier; re-calculate it
+tips <- pointsOther[, list(mean_tip_pct=mean(tip_pct, na.rm=TRUE), 
+                      median_tip_pct=median(tip_pct, na.rm=TRUE), n_bin=nrow(.SD), borough=BoroName[1]), by=NTAName]
+tips <- tips[n_bin > min_bin_size]
+tips <- na.omit(tips)
+a<-sp::merge(shapes, tips, by="NTAName")
+spplot(a, zcol="median_tip_pct")
+```
+
+Here are the ten regions with the highest median tip percentage, excluding card presets and zero tips:
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+tips[order(-median_tip_pct), c("NTAName", "borough", "median_tip_pct"), with=FALSE][1:10]
+```
+
+And here are the ten NTA regions with the lowest median tip percentage, excluding card presets and zero tips: 
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+tips[order(median_tip_pct), c("NTAName", "borough", "median_tip_pct"), with=FALSE][1:10]
+```
+
+# Discussion
+
+Tipping behavior was shown to be driven by several factors: a categorical decision to pay zero tip, or to pay with a card preset amount of 20%, 25%, or 30%, or to pay another amount.  A fully specified model of tipping behavior could be consructed to include variables for both the categorial decision and the continuous tip amount decision.  From here you could estimate expected tip.
+
+Tip amount varies strongly with geography.  Regions near the city centre in Manhattan and Brooklyn are more likely to pay with a card preset, less likely to leave a zero tip, and leave a higher average tip when they pay another amount.  Regions towards the edge of the city are more likely to leave a zero tip, less likely to pay with a card preset, and leave a lower average tip otherwise.  An exception to this are the two airport zones, JFK and La Guardia, which exhibit high average tips comparable to the city centre.
+
+One analysis I could do, but have not in order to limit the scope, is to compare tipping behavior with distance from the city centre.  I expect we could come up with a numerical relationship, i.e. for every km away from the city centre, expected tip amount declines by x%. 
+
+The results make a strong socioeconomic argument.  Business travelers and those who live in high-income residential areas would be expected to leave higher tips and this appears to be the case.  Low-tip and zero-tip areas seem to correlate well with lower-income areas.  Another analysis I could do would be to obtain socioecnomic data, e.g. household income level, and compare this against tipping behavior, i.e. for every increase in $X in household income, expected tip amount increases by Y%.  Because I've used standard census regions, a wealth of this data is readily available.  
+
+Paul Teehan
+paul.teehan@gmail.com
+Code available: 
