@@ -86,7 +86,7 @@ ggplot(pointsS, aes(x=total_amount, y=tip_pct, color=group)) + geom_point(alpha=
 
 The key observation here is that people who tip using a card preset tend to tip much higher than others; most cash tips are less than the preset card amounts.   Here is the mean tip percentage for each group, as well as the prevalence of that group in the population:
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-pointsS[, list(mean_tip_pct=mean(tip_pct), prevalence=nrow(.SD)/nrow(points)), by=group]
+pointsS[, list(mean_tip_pct=mean(tip_pct), prevalence=nrow(.SD)/nrow(pointsS)), by=group]
 ```
 
 This suggests the following conclusions.  First, a large percentage of trips have zero tip, independent of fare amount.  Second, a large percentage of trips pay with a card present amount which constrains the tip to be 20%, 25%, or 30% of total fare.  Third, of the remaining trips, tips are roughly linear with fare amount and are considerably lower than the card preset amount.  
@@ -95,7 +95,7 @@ Now that we have identified these segments, let's see how they fall on the map.
 
 # Mapping tipping behavior
 
-Filtering out regions that had less than ten trips overall, here is the percentage of trips from each region that had a zero tip:
+Filtering out regions that had less than `r min_bin_size` trips overall, here is the percentage of trips from each region that had a zero tip:
 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE, results="hide", dpi=100}
 points <- addGroup(points)
@@ -150,14 +150,19 @@ tips[order(median_tip_pct), c("NTAName", "borough", "median_tip_pct"), with=FALS
 
 # Discussion
 
-Tipping behavior was shown to be driven by several factors: a categorical decision to pay zero tip, or to pay with a card preset amount of 20%, 25%, or 30%, or to pay another amount.  A fully specified model of tipping behavior could be consructed to include variables for both the categorial decision and the continuous tip amount decision.  From here you could estimate expected tip.
+Tipping behavior was shown to be driven by several factors: a categorical decision to pay zero tip, or to pay with a card preset amount of 20%, 25%, or 30%, or to pay another amount.  A fully specified model of tipping behavior could be consructed to include variables for both the categorial decision and the continuous tip amount decision.  From here you could estimate expected tip.  Then we would be in a position to statistically test whether these suggestive results could be explained by chance.  
 
-Tip amount varies strongly with geography.  Regions near the city centre in Manhattan and Brooklyn are more likely to pay with a card preset, less likely to leave a zero tip, and leave a higher average tip when they pay another amount.  Regions towards the edge of the city are more likely to leave a zero tip, less likely to pay with a card preset, and leave a lower average tip otherwise.  An exception to this are the two airport zones, JFK and La Guardia, which exhibit high average tips comparable to the city centre.
+Tip amount varies strongly with geography.  Regions near the city centre in Manhattan and Brooklyn are more likely to pay with a card preset, less likely to leave a zero tip, and leave a higher average tip when they pay another amount.  Regions towards the edge of the city are more likely to leave a zero tip, less likely to pay with a card preset, and leave a lower average tip otherwise.  Airport regions are exceptions, which exhibit high average tips comparable to the city centre.
 
 One analysis I could do, but have not in order to limit the scope, is to compare tipping behavior with distance from the city centre.  I expect we could come up with a numerical relationship, i.e. for every km away from the city centre, expected tip amount declines by x%. 
 
-The results make a strong socioeconomic argument.  Business travelers and those who live in high-income residential areas would be expected to leave higher tips and this appears to be the case.  Low-tip and zero-tip areas seem to correlate well with lower-income areas.  Another analysis I could do would be to obtain socioecnomic data, e.g. household income level, and compare this against tipping behavior, i.e. for every increase in $X in household income, expected tip amount increases by Y%.  Because I've used standard census regions, a wealth of this data is readily available.  
+The results make a strong socioeconomic argument.  Business travelers and those who live in high-income residential areas would be expected to leave higher tips and this appears to be the case.  Low-tip and zero-tip areas seem to correlate well with lower-income areas.  Another analysis I could do would be to obtain socioecnomic data, e.g. household income level, and compare this against tipping behavior, i.e. for every increase in $X in household income, expected tip amount increases by Y%.  Because I've used standard census regions, a wealth of this data is readily available.  Again, such a model lends itself well to statistical tests.
+
+There are of course many other possibilities for analysis: splitting by time of day; number of passengers; trip distance; examining the prevalence of extreme tips.  
+
+Thank you for the challenge, I enjoyed it.  
 
 Paul Teehan
 paul.teehan@gmail.com
-Code available: 
+Code available: https://github.com/pteehan/pteehan.github.io/tree/master/code/flixbus/homework
+
