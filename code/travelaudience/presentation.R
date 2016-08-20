@@ -17,7 +17,6 @@
 
 # Airport Economics in Latin America and the Carribean, T. Serebisky, 2006 (found via Google)
  
-
 #SELECT rloc, brd_port, off_port, route FROM bookings_sub WHERE rloc='03439e5224f877372fd338fa425b8102';
 
 #WITH x AS (SELECT char_length(trim(route)) AS route_length FROM bookings_sub) SELECT route_length, count(route_length), round(COUNT(route_length)/(SELECT COUNT(*) from bookings_sub)::numeric,3) AS pct FROM x GROUP BY route_length ORDER BY route_length;
@@ -66,6 +65,11 @@ plotAllRoutes("FRA")
 airports <- segments[, list(passengers=sum(passengers), connecting_passengers=sum(connecting_passengers)), by="to"]
 airports[, pct_connecting := connecting_passengers/passengers]
 
+# most airports carry few passengers with few connections
+ggplot(airports, aes(x=passengers)) + geom_histogram(binwidth=5000) + theme_bw()
+ggplot(airports, aes(x=pct_connecting)) + geom_histogram() + theme_bw()
+ggplot(airports, aes(x=passengers, y=pct_connecting)) + geom_point(alpha=0.1) + theme_bw()
+
 # top 20 by pct connecting
 airports[passengers>1000][order(-pct_connecting)][1:20]
 # these seem to be primarily transit hubs, rather than destinations
@@ -97,59 +101,39 @@ plotAllRoutes("KRT") # Khartoum, Sudan
 plotAllRoutes("ORF") # Norfolk, Virginia (?)
 plotAllRoutes("ORN") # Oran, Algeria
 
-ggplot(airports[order(-connecting_passengers)][1:20], aes(x=passengers, y=connecting_passengers)) + geom_point() +
-  geom_text(aes(label=to), nudge_x=-1.2e4) + theme_bw() + coord_equal() + expand_limits(x=0,y=0) + ggtitle("Top 20 airports by total connecting passengers")
-ggplot(airports[order(-passengers)][1:20], aes(x=passengers, y=pct_connecting)) + geom_point() +
-  geom_text(aes(label=to), nudge_x=-1.2e4) + theme_bw() + expand_limits(x=0,y=0)
+# conclusions:
+# Major hubs seem to be present in economically developed areas
+# Major hubs can be very close to one another geographically
+# Isolation seems to imply low-connectivity (but not the converse)
+# Hypothesis: economic conditions detemine connectivity of an airport
 
-ggplot(airports[order(-connecting_passengers)][1:20], aes(x=passengers, y=pct_connecting)) + geom_point() +
-  geom_text(aes(label=to), nudge_x=-1.2e4) + theme_bw() + expand_limits(x=0,y=0)
+###
+# Now let's look at flight segments
+segments[, pct_connecting := connecting_passengers / passengers]
+segments[passengers>0][order(-pct_connecting)][1:20]
 
+# most segments have few passengers 
+ggplot(segments, aes(x=passengers)) + geom_histogram(binwidth=200) + theme_bw()
 
+# most segments have no connections, some have 100%
+ggplot(segments, aes(x=pct_connecting)) + geom_histogram() + theme_bw()
+ggplot(segments, aes(x=passengers, y=pct_connecting)) + geom_point(alpha=0.01) + theme_bw()
 
+# if you throw away zero and 100% connections what's left? 
+ggplot(segments[pct_connecting > 0 & pct_connecting < 1], aes(x=pct_connecting)) + geom_histogram()
 
+# Largest 'high connection' segments
+segments[pct_connecting>0.90][order(-passengers)][1:10]
+plotSegments(segments[pct_connecting>0.90][order(-passengers)][1:50], arrow.size=0.2)+ggtitle("50 largest high-connecting segments")
+# Traffic travelling into hubs
+# Seems to be either short or long haul, not mid-range
 
-ggplot(airports, aes(x=passengers, y=pct_connecting)) + geom_point() +
-  theme_bw() + expand_limits(x=0,y=0)
+# Largest 'zero connection' segments
+segments[pct_connecting==0][order(-passengers)][1:10]
+plotSegments(segments[pct_connecting==0][order(-passengers)][1:50], arrow.size=0.2)+ggtitle("50 largest zero-connecting segments")
+# Traffic travelling outward from hubs
 
-
-plotAirports(airports[passengers>1000][order(-pct_connecting)][1:20])+ggtitle("Top 20 airports by % connecting")
-
-plotAirports(airports[passengers>1000][order(pct_connecting)][1:20])+ggtitle("Bottom 20 airports by % connecting")
-
-
-#Highest-connecting segments
-segments[, pct_connect := connecting_passengers/passengers]
-segments[order(-pct_connect)][1:20]
-
-
-```
-
-
-Model as a Binomial random variable
-========================================================
-class: small-code
-```{r echo=TRUE}
-library(Hmisc)
-intervals <- binconf(segments$connecting_passengers, segments$passengers)
-segments[, lower := round(intervals[,2],4)]
-segments[, upper := round(intervals[,3],4)]
-segments[order(-lower)][1:20]
-```
-
-Lowest-connecting segments
-========================================================
-class: small-code
-```{r echo=TRUE}
-segments[passengers>1000][order(pct_connecting)][1:20]
-```
-
-
-plotSegments(segments[passengers>1000][order(upper)][1:50], arrow.size=0.2)+ggtitle("50 lowest-connecting segments")
-
-plotSegments(segments[passengers>1000][order(-lower)][1:50], arrow.size=0.2)+ggtitle("50 highest-connecting segments")
-
-
-
-
+# Conclusions
+# - Connectivity strongly influenced by whether destination is a 'hub'
+# - Connections more common for short and long flights, not mid-length
 
