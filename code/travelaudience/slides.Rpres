@@ -51,8 +51,9 @@ WHERE rloc='03439e5224f877372fd338fa425b8102';
 ----------------------------------+----------+----------+-----------------
  03439e5224f877372fd338fa425b8102 | SNA      | STL      | SNADFWSTL      
  03439e5224f877372fd338fa425b8102 | STL      | SNA      | STLORDSNA      
- 03439e5224f877372fd338fa425b8102 | SNA      | STL      | SNADFWSTL      
- 03439e5224f877372fd338fa425b8102 | STL      | SNA      | STLORDSNA         
+ 03439e5224f877372fd338fa425b8102 | SNA      | STL      | SNADFWSTL     
+ 03439e5224f877372fd338fa425b8102 | STL      | SNA      | STLORDSNA
+ 
  etc...
 ```
 - All connecting segments together in one row
@@ -93,5 +94,119 @@ Aggregate airports
 ========================================================
 class:small-code
 ```{r echo=TRUE}
-summarizeSegments()[, list(passengers=sum(passengers), connecting_passengers=sum(connecting_passengers)), by="to"]
+segments <- summarizeSegments()
+airports <- segments[, list(passengers=sum(passengers), connecting_passengers=sum(connecting_passengers)), by="to"]
+airports
 ```
+
+
+
+Visualization
+========================================================
+type: section
+
+
+Subset and convert to a graph
+========================================================
+class: small-code
+```{r echo=TRUE}
+library(igraph)
+g <- graph.data.frame(segments[to=="TXL"])
+g
+```
+
+Merge in latitude and longitude, then plot
+========================================================
+class: small-code
+```{r echo=TRUE}
+airport_data <- data.table(read.csv("/host/files/airport_data.csv"))
+setkey(airport_data, code)
+library(intergraph)
+library(network)
+n<-asNetwork(g)
+n %v% "lat" <- airport_data[network.vertex.names(n)]$lat
+n %v% "lon" <- airport_data[network.vertex.names(n)]$lng
+```
+
+```{r echo=TRUE}
+library(maps) 
+library(ggmap) 
+library(GGally)
+world <- fortify(map("world", plot = FALSE, fill = TRUE))
+world <- ggplot(world, aes(x = long, y = lat)) + geom_polygon(aes(group = group), color = "grey65",fill = "#f9f9f9", size = 0.2)
+plot<-ggnetworkmap(world, n, size=1, great.circles=TRUE, segment.color="steelblue") 
+```
+
+
+Plot TXL
+===================================
+title: false
+```{r echo=FALSE,fig.width=8,fig.height=4.5,dpi=300,out.width="1920px",height="1080px"}
+source("plotting.R")
+plotAllRoutes("TXL")
+```
+
+
+Plot SXF
+===================================
+title: false
+```{r echo=FALSE,fig.width=8,fig.height=4.5,dpi=300,out.width="1920px",height="1080px"}
+plotAllRoutes("SXF")
+```
+
+Plot FRA
+===================================
+title: false
+```{r echo=FALSE,fig.width=8,fig.height=4.5,dpi=300,out.width="1920px",height="1080px"}
+plotAllRoutes("FRA")
+```
+
+
+Analysis of connections
+========================================================
+type: section
+
+
+Highest-connecting segments
+========================================================
+class: small-code
+
+```{r echo=TRUE}
+segments[, pct_connect := connecting_passengers/passengers]
+segments[order(-pct_connect)][1:20]
+```
+
+
+Model as a Binomial random variable
+========================================================
+class: small-code
+```{r echo=TRUE}
+library(Hmisc)
+intervals <- binconf(segments$connecting_passengers, segments$passengers)
+segments[, lower := round(intervals[,2],4)]
+segments[, upper := round(intervals[,3],4)]
+segments[order(-lower)][1:20]
+```
+
+Lowest-connecting segments
+========================================================
+class: small-code
+```{r echo=TRUE}
+segments[passengers>1000][order(pct_connecting)][1:20]
+```
+
+
+plotSegments(segments[passengers>1000][order(upper)][1:50], arrow.size=0.2)+ggtitle("50 lowest-connecting segments")
+
+plotSegments(segments[passengers>1000][order(-lower)][1:50], arrow.size=0.2)+ggtitle("50 highest-connecting segments")
+
+airports <- segments[, list(passengers=sum(passengers), connecting_passengers=sum(connecting_passengers)), by="to"]
+airports[, pct_connecting := connecting_passengers/passengers]
+
+plotAirports(airports[order(-connecting_passengers)][1:20])+ggtitle("Top 20 airports by number of connecting passengers")
+
+plotAirports(airports[passengers>1000][order(-pct_connecting)][1:20])+ggtitle("Top 20 airports by % connecting")
+ 
+plotAirports(airports[passengers>1000][order(pct_connecting)][1:20])+ggtitle("Bottom 20 airports by % connecting")
+
+
