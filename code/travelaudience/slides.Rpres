@@ -1,0 +1,97 @@
+<style>
+.reveal h1, .reveal h2, .reveal h3 {
+  word-wrap: normal;
+  -moz-hyphens: none;
+}
+.small-code pre code {
+  font-size: 1em;
+}
+</style>
+Flight connections @ travel audience
+========================================================
+author: Paul Teehan
+date: Aug 21, 2016 
+autosize: true
+
+Problem description
+========================================================
+
+Given a bookings dataset, find:
+
+- Flight segments with highest and lowest share of connecting passengers
+- Airports with highest and lowest share of connecting passengers
+
+
+What is the right answer, roughly?
+========================================================
+class:small-code
+```
+Region        |  % connecting
+-----------------------------
+Latin America |     7.9    
+Asia          |     9.5
+Europe        |     32.8
+US/Canada     |     23.4
+```
+ Airport Economics in Latin America and the Carribean, T. Serebisky, 2006 (found via Google)
+ 
+
+Exploration and transformation
+========================================================
+type: section
+
+How is the data structured?
+========================================================
+class:small-code
+```
+SELECT rloc, brd_port, off_port, route FROM bookings 
+WHERE rloc='03439e5224f877372fd338fa425b8102';
+
+               rloc               | brd_port | off_port |      route      
+----------------------------------+----------+----------+-----------------
+ 03439e5224f877372fd338fa425b8102 | SNA      | STL      | SNADFWSTL      
+ 03439e5224f877372fd338fa425b8102 | STL      | SNA      | STLORDSNA      
+ 03439e5224f877372fd338fa425b8102 | SNA      | STL      | SNADFWSTL      
+ 03439e5224f877372fd338fa425b8102 | STL      | SNA      | STLORDSNA         
+ etc...
+```
+- All connecting segments together in one row
+
+How many flights are direct?
+========================================================
+class:small-code
+```
+ route_length |  count  |  pct  
+ -------------+---------+-------
+            6 | 5847344 | 0.585
+            9 | 3634844 | 0.363
+           12 |  492630 | 0.049
+           15 |   24030 | 0.002
+           18 |    1130 | 0.000
+           21 |      30 | 0.000
+```
+- 60% of flights are direct; the rest have at least one connection
+- Seems reasonable
+
+Extract flight segments in R
+========================================================
+class:small-code
+```{r echo=TRUE}
+source('convertRoute.R')
+convertRoute(c("AAABBBCCC", "DDDEEE", "FFFGGGHHHIII"))
+```
+
+Aggregate segments
+========================================================
+class:small-code
+```{r echo=TRUE}
+summarizeSegments()
+```
+
+
+Aggregate airports
+========================================================
+class:small-code
+```{r echo=TRUE}
+summarizeSegments()[, list(passengers=sum(passengers), connecting_passengers=sum(connecting_passengers)), by="to"]
+```
