@@ -8,6 +8,7 @@
 #- Flight segments with highest and lowest share of connecting passengers
 #- Airports with highest and lowest share of connecting passengers
 
+# Airport Economics in Latin America and the Carribean, T. Serebisky, 2006 (found via Google)
 #Region        |  % connecting
 #-----------------------------
 #Latin America |     7.9    
@@ -15,7 +16,6 @@
 #Europe        |     32.8
 #US/Canada     |     23.4
 
-# Airport Economics in Latin America and the Carribean, T. Serebisky, 2006 (found via Google)
  
 #SELECT rloc, brd_port, off_port, route FROM bookings_sub WHERE rloc='03439e5224f877372fd338fa425b8102';
 
@@ -57,7 +57,7 @@ plotAllRoutes("TXL")
 plotAllRoutes("SXF")
 plotAllRoutes("FRA")
 
-
+plotAirports(airports, labels=FALSE) # all the world's airports
 
 # Analysis of connections
 
@@ -70,8 +70,8 @@ ggplot(airports, aes(x=passengers)) + geom_histogram(binwidth=5000) + theme_bw()
 ggplot(airports, aes(x=pct_connecting)) + geom_histogram() + theme_bw()
 ggplot(airports, aes(x=passengers, y=pct_connecting)) + geom_point(alpha=0.1) + theme_bw()
 
-# top 20 by pct connecting
-airports[passengers>1000][order(-pct_connecting)][1:20]
+# top 10 by pct connecting
+airports[passengers>1000][order(-pct_connecting)][1:10]
 # these seem to be primarily transit hubs, rather than destinations
 plotAllRoutes("CLT") # Charlotte
 plotAllRoutes("DOH") # Doha
@@ -83,6 +83,8 @@ plotAirports(airports[passengers>1000][order(-pct_connecting)][1:20]) + ggtitle(
 # Note many of these are very close geographically
 plotAirports(c("BAH", "DOH", "DXB", "AUH"))
 
+# why are these airports hubs? what do they have in common?
+# economically developed; geographically central; what else?
 
 # Largest 'low connection' airports
 airports[pct_connecting < 0.05][order(-passengers)][1:10]
@@ -94,12 +96,17 @@ plotAllRoutes("HAM") # Hamberg
 plotAllRoutes("DMM") # Dammam, Saudi Arabia
 plotAirports(c("DMM", "DOH", "DXB", "BAH", "AUH"))
 
+# many of these have little obvious differences from hubs
+
 # largest 'zero connection' airports
-airports[pct_connecting == 0][order(-passengers)][1:4]
+airports[pct_connecting == 0][order(-passengers)][1:10]
 plotAllRoutes("KTM") # Kathmandu,Nepal
 plotAllRoutes("KRT") # Khartoum, Sudan
 plotAllRoutes("ORF") # Norfolk, Virginia (?)
 plotAllRoutes("ORN") # Oran, Algeria
+
+# 'end of the line' = no connections
+
 
 # conclusions:
 # Major hubs seem to be present in economically developed areas
