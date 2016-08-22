@@ -1,12 +1,7 @@
 
-#Flight connections @ travel audience
+#Flight connections @ [company]
 #Paul Teehan, Aug 21 2016
 
-
-#Given a bookings dataset, find:
-
-#- Flight segments with highest and lowest share of connecting passengers
-#- Airports with highest and lowest share of connecting passengers
 
 # Airport Economics in Latin America and the Carribean, T. Serebisky, 2006 (found via Google)
 #Region        |  % connecting
@@ -23,7 +18,7 @@
 
 source('convertRoute.R')
 convertRoute(c("AAABBBCCC", "DDDEEE", "FFFGGGHHHIII"))
-
+  
 segments <- summarizeSegments()
 airports <- segments[, list(passengers=sum(passengers), connecting_passengers=sum(connecting_passengers)), by="to"]
 
@@ -69,6 +64,7 @@ airports[, pct_connecting := connecting_passengers/passengers]
 ggplot(airports, aes(x=passengers)) + geom_histogram(binwidth=5000) + theme_bw()
 ggplot(airports, aes(x=pct_connecting)) + geom_histogram() + theme_bw()
 ggplot(airports, aes(x=passengers, y=pct_connecting)) + geom_point(alpha=0.1) + theme_bw()
+ggplot(airports, aes(x=passengers, y=pct_connecting)) + geom_point(alpha=0.3) + theme_bw()+ scale_x_log10()
 
 # top 10 by pct connecting
 airports[passengers>1000][order(-pct_connecting)][1:10]
@@ -79,10 +75,10 @@ plotAllRoutes("BWN") # Brunei
 plotAllRoutes("ATL") # Atlanta
 plotAllRoutes("PTY") # Panama City
 plotAllRoutes("AUH") # Abu Dhabi
+plotAllRoutes("ADD") # Addis Ababa (Ethiopia)
 plotAirports(airports[passengers>1000][order(-pct_connecting)][1:20]) + ggtitle("Top 20 airports by pct connecting")
 # Note many of these are very close geographically
 plotAirports(c("BAH", "DOH", "DXB", "AUH"))
-
 # why are these airports hubs? what do they have in common?
 # economically developed; geographically central; what else?
 
@@ -122,6 +118,7 @@ segments[passengers>0][order(-pct_connecting)][1:20]
 # most segments have few passengers 
 ggplot(segments, aes(x=passengers)) + geom_histogram(binwidth=200) + theme_bw()
 
+ggplot(segments, aes(x=passengers, y=pct_connecting)) + geom_point()
 # most segments have no connections, some have 100%
 ggplot(segments, aes(x=pct_connecting)) + geom_histogram() + theme_bw()
 ggplot(segments, aes(x=passengers, y=pct_connecting)) + geom_point(alpha=0.01) + theme_bw()
@@ -131,7 +128,7 @@ ggplot(segments[pct_connecting > 0 & pct_connecting < 1], aes(x=pct_connecting))
 
 # Largest 'high connection' segments
 segments[pct_connecting>0.90][order(-passengers)][1:10]
-plotSegments(segments[pct_connecting>0.90][order(-passengers)][1:50], arrow.size=0.2)+ggtitle("50 largest high-connecting segments")
+plotSegments(segments[pct_connecting>0.90][order(-passengers)][1:100], arrow.size=0.2)+ggtitle("50 largest high-connecting segments")
 # Traffic travelling into hubs
 # Seems to be either short or long haul, not mid-range
 
@@ -143,4 +140,5 @@ plotSegments(segments[pct_connecting==0][order(-passengers)][1:50], arrow.size=0
 # Conclusions
 # - Connectivity strongly influenced by whether destination is a 'hub'
 # - Connections more common for short and long flights, not mid-length
+
 
