@@ -1,5 +1,5 @@
 ---
-title: "Plotnine is a superior Python implementation of R's ggplot2"
+title: "Plotnine is the best Python implementation of R's ggplot2"
 author: "Paul Teehan"
 date: "May 21, 2017"
 layout: post
