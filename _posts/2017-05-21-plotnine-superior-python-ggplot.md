@@ -5,9 +5,11 @@ date: "May 21, 2017"
 layout: post
 ---
 
-Longtime R users who move to Python acutely feel the loss of R's [ggplot2](http://ggplot2.tidyverse.org/index.html) plotting library, which is unmatched in fluidity and expressiveness in the data science community.  Contenders like [Altair](https://altair-viz.github.io/), [Seaborn](https://seaborn.pydata.org/), [Bokeh](http://bokeh.pydata.org/en/latest/), [plot.ly](https://plot.ly/python/), and [Matplotlib](https://matplotlib.org/) all have plenty to offer, but for rapid exploratory visualization none are a perfect replacement, either due to lack of maturity as in Altair, a focus on lower-level APIs as in Seaborn and Matplotlib, or optimizing for different use cases as in plot.ly and Bokeh.  (Here's a [great article](https://dsaber.com/2016/10/02/a-dramatic-tour-through-pythons-data-visualization-landscape-including-ggplot-and-altair/) summarizing some of these differences.)  
+plotnine is a new Python library that implements R's ggplot2.  It is a better implementation than ggpy, which was the best option until now for Python users.  In this article I show a few examples comparing plotnine, ggpy, and ggplot2.  
 ![png]({{site_url}}/images/output_7_0.png)
-----
+
+---- 
+Longtime R users who move to Python acutely feel the loss of R's [ggplot2](http://ggplot2.tidyverse.org/index.html) plotting library, which is unmatched in fluidity and expressiveness in the data science community.  Contenders like [Altair](https://altair-viz.github.io/), [Seaborn](https://seaborn.pydata.org/), [Bokeh](http://bokeh.pydata.org/en/latest/), [plot.ly](https://plot.ly/python/), and [Matplotlib](https://matplotlib.org/) all have plenty to offer, but for rapid exploratory visualization none are a perfect replacement, either due to lack of maturity as in Altair, a focus on lower-level APIs as in Seaborn and Matplotlib, or optimizing for different use cases as in plot.ly and Bokeh.  (Here's a [great article](https://dsaber.com/2016/10/02/a-dramatic-tour-through-pythons-data-visualization-landscape-including-ggplot-and-altair/) summarizing some of these differences.)  
 
 ggplot is a rewarding library to use, because it allows you to construct plots using a high-level grammar without thinking about the implementation details.  As you master it, it fades away, until you are interacting directly with your data.  No one library in Python achieves this, though Altair might in its next major release.  Until then, Python users are forced to carry the extra cognitive load of learning several visualization libraries, learning their implementation details, and working around their limitations.
 
